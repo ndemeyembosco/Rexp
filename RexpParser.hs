@@ -53,7 +53,8 @@ data FAid where
 
 newtype Statements = Stmts [Stmt] deriving Show
 
-data Program = P [FA] Statements deriving Show
+data Program = P [FA] --Statements 
+     deriving Show
 
 -- Providing statements to manipulate the Automaton.
 data RexpExpr where
@@ -84,15 +85,8 @@ data Type where
  deriving (Show, Eq)
 
 data Stmt where
-   Decl   :: Type     -> Var       -> Stmt           -- <type> <var>
+   Decl   :: Type     -> Var       -> Stmt
    Assign :: Type     -> Var       -> RexpExpr  -> Stmt
-   --Inc    :: Var      -> RexpExpr  -> Stmt         -- <var> ':=' <expr>
-   --Block  :: Prog     -> Stmt                  -- '{' <prog> '}'
-   --If     :: RexpExpr -> Stmt      -> Stmt -> Stmt  -- 'if' <expr> 'then' <stmt> 'else' <stmt>
-   --Repeat :: RexpExpr -> Stmt      -> Stmt          -- 'repeat' <expr> <stmt>
-   --While  :: RexpExpr -> Stmt      -> Stmt          -- 'while' <expr> <stmt>
-   --Input  :: Var      -> Stmt                  -- 'input' <var>
-   --Output :: RexpExpr -> Stmt                  -- 'output' <expr>
   deriving Show
 
 
@@ -232,19 +226,19 @@ parseType :: Parser Type
 parseType = TyDFA <$ reserved "DFA" <|> TyNFA <$ reserved "NFA"
 
 {- Parsing Statements -}
-parseStmt :: Parser Stmt
-parseStmt = P.try (Assign <$> parseType <*> (identifier <* reservedOp "=")
-                    <*> parseRexpExpr)
-         <|>  Decl <$> parseType <*> identifier
-
-
-parseStmtTag :: Parser Statements
-parseStmtTag = Stmts <$> (parseStartTag "statements"
-                     *> semiSep1 parseStmt <* parseEndTag "statements")
+-- parseStmt :: Parser Stmt
+-- parseStmt = P.try (Assign <$> parseType <*> (identifier <* reservedOp "=")
+--                     <*> parseRexpExpr)
+--          <|>  Decl <$> parseType <*> identifier
+--
+--
+-- parseStmtTag :: Parser Statements
+-- parseStmtTag = Stmts <$> (parseStartTag "statements"
+--                      *> semiSep1 parseStmt <* parseEndTag "statements")
 
 
 
 {- Add Prog Parser -}
 parseProgTag :: Parser Program
-parseProgTag = P <$> (parseStartTag "rexp" *> commaSep1 parseFA)
-                 <*> (parseStmtTag <* parseEndTag "rexp")
+parseProgTag = P <$> (parseStartTag "rexp" *> commaSep1 parseFA
+                 <* parseEndTag "rexp")

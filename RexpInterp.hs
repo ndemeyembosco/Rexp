@@ -68,7 +68,8 @@ makeStateConverter alls@(All _ l) = M.fromList (zip l (interpAllStates alls))
 
 
 interpTransition :: Transition -> StateConverter -> ((State, Char), State)
-interpTransition (Tr s c s1) dict = ((fromJust $ M.lookup s dict, c), fromJust $ M.lookup s1 dict)
+interpTransition (Tr s c s1) dict = -- deal with Nothing erros!!!
+  ((fromJust $ M.lookup s dict, c), fromJust $ M.lookup s1 dict)
 
 interpDeltaCore :: DeltaCore -> StateConverter -> Delta
 interpDeltaCore (Dt l) dict = M.fromList (map (\t -> interpTransition t dict) l)
@@ -115,10 +116,10 @@ interpStatements (Stmts l) e = map (\s -> interpStmt s e) l
 
 
 makeFAList :: Program -> M.Map String DFA
-makeFAList (P fas stmts) = M.fromList (map interpDFA fas)
+makeFAList (P fas) = M.fromList (map interpDFA fas)
 
-interpProgram :: Program -> [(String, Maybe DFA)]
-interpProgram prog@(P fas stmts) = interpStatements stmts (makeFAList prog)
+interpProgram :: Program -> M.Map String DFA
+interpProgram prog@(P fas) = makeFAList prog
 
 
 {-------------------------------------------------------
@@ -158,14 +159,14 @@ example1 = unlines [ "<rexp>"
               , "<transition>from Q3 with 1 to Q0</transition>"
               , "</delta>"
               , "</FA>"
-              , "<statements>"
-              , "DFA first   = multOf3 + endsWith1;"
-              , "DFA second  = multOf3 * endsWith1;"
-              , "DFA third   = !second"
-              , "</statements>"
+              -- , "<statements>"
+              -- , "DFA first   = multOf3 + endsWith1;"
+              -- , "DFA second  = multOf3 * endsWith1;"
+              -- , "DFA third   = !second"
+              -- , "</statements>"
               , "</rexp>"]
 
-evaluate :: String -> [(String, Maybe DFA)]
+evaluate :: String -> [(String, DFA)]
 evaluate s =  case  parseSome parseProgTag s of
-  Right parsedProg -> interpProgram (fst parsedProg)
+  Right parsedProg -> M.toList $ interpProgram (fst parsedProg)
   _                -> error "Syntax Error"
