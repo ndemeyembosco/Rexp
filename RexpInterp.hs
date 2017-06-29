@@ -63,22 +63,30 @@ interpAllStates (All imps@(Imp (Start q0) (Final fs)) (x@(St s):xs)) =
 
 type StateConverter = M.Map StateCore State
 
+-- makeStateConverter :: DeltaCore -> StateConverter
+-- makeStateConverter (Dt l) = map (\Tr stc ch stc1 -> ) l
+
 makeStateConverter :: AllStates -> M.Map StateCore State
 makeStateConverter alls@(All _ l) = M.fromList (zip l (interpAllStates alls))
 
 
 interpTransition :: Transition -> StateConverter -> ((State, Char), State)
-interpTransition (Tr s c s1) dict = -- deal with Nothing erros!!!
+interpTransition (Tr s c s1) dict = -- deal with Nothing
   ((fromJust $ M.lookup s dict, c), fromJust $ M.lookup s1 dict)
 
 interpDeltaCore :: DeltaCore -> StateConverter -> Delta
 interpDeltaCore (Dt l) dict = M.fromList (map (\t -> interpTransition t dict) l)
 
 -- might change in future to incorporate types.
+-- interpDFA :: FA -> (String, DFA)
+-- interpDFA (FA (ID ty (Nm n)) al sts@(All imps l) d) =
+--   (n, D (fst $ interpImportantStates imps) (interpAllStates sts) (interpAlphabet al)
+--   (interpDeltaCore d M.empty) (snd $ interpImportantStates imps))
+
 interpDFA :: FA -> (String, DFA)
 interpDFA (FA (ID ty (Nm n)) al sts@(All imps l) d) =
   (n, D (fst $ interpImportantStates imps) (interpAllStates sts) (interpAlphabet al)
-  (interpDeltaCore d M.empty) (snd $ interpImportantStates imps))
+  (interpDeltaCore d (makeStateConverter sts)) (snd $ interpImportantStates imps))
 
 
 type Env = M.Map String DFA
