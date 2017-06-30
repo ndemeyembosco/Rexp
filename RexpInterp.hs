@@ -78,49 +78,48 @@ interpDeltaCore :: DeltaCore -> StateConverter -> Delta
 interpDeltaCore (Dt l) dict = M.fromList (map (\t -> interpTransition t dict) l)
 
 -- might change in future to incorporate types.
--- interpDFA :: FA -> (String, DFA)
--- interpDFA (FA (ID ty (Nm n)) al sts@(All imps l) d) =
---   (n, D (fst $ interpImportantStates imps) (interpAllStates sts) (interpAlphabet al)
---   (interpDeltaCore d M.empty) (snd $ interpImportantStates imps))
-
 interpDFA :: FA -> (String, DFA)
 interpDFA (FA (ID ty (Nm n)) al sts@(All imps l) d) =
   (n, D (fst $ interpImportantStates imps) (interpAllStates sts) (interpAlphabet al)
   (interpDeltaCore d (makeStateConverter sts)) (snd $ interpImportantStates imps))
 
 
-type Env = M.Map String DFA
-{- Statements Tag -}
-interpUniOp :: UniOp -> Either DFA NFA -> Either DFA NFA
-interpUniOp Neg  (Left  d) = Left $ compDFA d
---interpUniOp Conv (Right n) = undefined
 
-{-! As of now, only DFA's work. In the future, maybe add Either DFA NFA as well-}
+{- interpreting expressions!!
+   This is to be done in another file -}
 
-interpBinOp :: BinOp -> DFA -> DFA -> DFA
-interpBinOp Plus d1 d2  = d1 `uu` d2
-interpBinOp Times d1 d2 = (@@) d1 d2
+-- type Env = M.Map String DFA
+-- {- Statements Tag -}
+-- interpUniOp :: UniOp -> Either DFA NFA -> Either DFA NFA
+-- interpUniOp Neg  (Left  d) = Left $ compDFA d
+-- --interpUniOp Conv (Right n) = undefined
+--
+-- {-! As of now, only DFA's work. In the future, maybe add Either DFA NFA as well-}
+--
+-- interpBinOp :: BinOp -> DFA -> DFA -> DFA
+-- interpBinOp Plus d1 d2  = d1 `uu` d2
+-- interpBinOp Times d1 d2 = (@@) d1 d2
+--
+--
+-- makeEnv :: [(String, DFA)] -> M.Map String DFA
+-- makeEnv  l = M.fromList l
 
-
-makeEnv :: [(String, DFA)] -> M.Map String DFA
-makeEnv  l = M.fromList l
-
-interpRexpr :: RexpExpr -> Env -> DFA
-interpRexpr (Autom (Nm n))  e   = fromJust $ M.lookup n e
-interpRexpr (Var s)         e   = fromJust (M.lookup s e)
-interpRexpr (Uni Neg r1)    e   = compDFA $ interpRexpr r1 e
-interpRExpr (Bin op r1 r2)  e   = interpBinOp op (interpRexpr r1 e) (interpRexpr r2 e)
+-- interpRexpr :: RexpExpr -> Env -> DFA
+-- interpRexpr (Autom (Nm n))  e   = fromJust $ M.lookup n e
+-- interpRexpr (Var s)         e   = fromJust (M.lookup s e)
+-- interpRexpr (Uni Neg r1)    e   = compDFA $ interpRexpr r1 e
+-- interpRExpr (Bin op r1 r2)  e   = interpBinOp op (interpRexpr r1 e) (interpRexpr r2 e)
 
 
 
 --
-interpStmt :: Stmt -> M.Map String DFA -> (String, Maybe DFA)
-interpStmt (Decl _ s)        e = (s, Nothing)     -- ignore types for now
-interpStmt (Assign _ s r)    e = (s, Just $ interpRexpr r e)
-
-
-interpStatements :: Statements -> M.Map String DFA -> [(String, Maybe DFA)]
-interpStatements (Stmts l) e = map (\s -> interpStmt s e) l
+-- interpStmt :: Stmt -> M.Map String DFA -> (String, Maybe DFA)
+-- interpStmt (Decl _ s)        e = (s, Nothing)     -- ignore types for now
+-- interpStmt (Assign _ s r)    e = (s, Just $ interpRexpr r e)
+--
+--
+-- interpStatements :: Statements -> M.Map String DFA -> [(String, Maybe DFA)]
+-- interpStatements (Stmts l) e = map (\s -> interpStmt s e) l
 
 
 makeFAList :: Program -> M.Map String DFA
@@ -167,11 +166,6 @@ example1 = unlines [ "<rexp>"
               , "<transition>from Q3 with 1 to Q0</transition>"
               , "</delta>"
               , "</FA>"
-              -- , "<statements>"
-              -- , "DFA first   = multOf3 + endsWith1;"
-              -- , "DFA second  = multOf3 * endsWith1;"
-              -- , "DFA third   = !second"
-              -- , "</statements>"
               , "</rexp>"]
 
 evaluate :: String -> [(String, DFA)]
