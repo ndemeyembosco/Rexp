@@ -1,4 +1,3 @@
-module Example1 where
 import Rexp
 import qualified Data.Map as M
 import RexpInterp
