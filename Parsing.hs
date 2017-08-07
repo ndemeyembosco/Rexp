@@ -7,6 +7,7 @@ module Parsing
   , getNatural, getInteger, getSymbol
   , getWhiteSpace, getParens, getFloat
   , getNaturalOrFloat, getSemiSep1, getCommaSep1, getBraces
+  , getCharLiteral
 
     -- * Parsing
 
@@ -51,6 +52,7 @@ getFloat      = float
 getNaturalOrFloat = naturalOrFloat
 getSemiSep1          = semiSep1
 getCommaSep1         = commaSep1
+getCharLiteral       = charLiteral
 
 -- For more, see http://hackage.haskell.org/package/parsec-3.1.11/docs/Text-Parsec-Token.html
 

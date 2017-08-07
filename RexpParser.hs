@@ -6,7 +6,9 @@ module RexpParser
     ImportantStates(..), DeltaCore(..)
     , Transition (..), AllStates (..)
     , Name (..), FAid (..), FA (..),
-    RexpExpr (..), parseProgTag, Stmt (..)
+    RexpExpr (..), parseProgTag, parseFAid, parseAlphabet
+    , Stmt (..), parseAllStates, parseDeltaCore, parseTransition
+    , reserved, reservedOp, whiteSpace
     , Program (..) , Statements (..)
     ) where
 
@@ -41,20 +43,18 @@ data FA where
   FA :: FAid -> Alphabet -> AllStates -> DeltaCore -> FA
   deriving Show
 
-newtype Name = Nm String deriving Show
+type Name = String
 
-data FAtype where
-  FaT :: String -> FAtype
-  deriving Show
+data FAType = DFA | NFA
+   deriving (Show)
 
 data FAid where
-  ID :: FAtype -> Name -> FAid
+  ID :: FAType -> Name -> FAid
   deriving Show
 
 newtype Statements = Stmts [Stmt] deriving Show
 
-data Program = P [FA] --Statements 
-     deriving Show
+type Program = FA
 
 -- Providing statements to manipulate the Automaton.
 data RexpExpr where
@@ -105,6 +105,9 @@ braces = getBraces lexer
 commaSep1 :: Parser a -> Parser [a]
 commaSep1 = getCommaSep1 lexer
 
+charLiteral :: Parser Char
+charLiteral = getCharLiteral lexer
+
 semiSep1 :: Parser a -> Parser [a]
 semiSep1 = getSemiSep1 lexer
 
@@ -129,116 +132,51 @@ identifier = getIdentifier lexer
 whiteSpace :: Parser ()
 whiteSpace = getWhiteSpace lexer
 
-{-< Parsing the FA tag >-}
+parseAssign :: String -> Parser ()
+parseAssign s = reserved s *> reservedOp "="
 
-{- Basic parser for common tags <E>stuff</E> -}
-
-parseStartTag :: String -> Parser ()
-parseStartTag s = reservedOp "<" *> reserved s *> reservedOp ">"
-
-parseEndTag :: String -> Parser ()
-parseEndTag s = endTag *> reserved s *> reservedOp ">"
-
-{- Parsing the alphabet tag then becomes straight forward.-}
 parseAlphabet :: Parser Alphabet
-parseAlphabet = A <$> (P.try (parseStartTag "alphabet"
-                *> (show <$> integer)  <* parseEndTag "alphabet")
-                <|> (parseStartTag "alphabet"
-                *> identifier <* parseEndTag "alphabet"))
+parseAlphabet = A <$> (parseAssign "alphabet" *> (identifier <|> (show <$> integer)))
 
-{- To parse the delta tag, we need to first parse the transition tags
-   inside it. Each of these is thus considered as a lexical element that
-   ends with a simi-colon which allows us to write the whole delta tag.-}
+parseStateCore :: Parser StateCore
+parseStateCore = St <$> identifier
 
-parseTransition :: Parser Transition
-parseTransition = Tr <$> (St <$> (parseStartTag "transition"
-                 *> reserved "from" *> identifier)) <*> (reserved "with"
-                 *> anyChar <* (space <* reserved "to"))
-                 <*> (St <$> (identifier <* parseEndTag "transition"))
-
-parseTS :: Parser [Transition]
-parseTS = semiSep1 parseTransition
-
-parseDelta :: Parser DeltaCore
-parseDelta = Dt <$> (parseStartTag "delta" *> parseTS <* parseEndTag "delta")
-
-{- Parse the whole states tag, its start tag takes two parameters
-   starting, as well as final. Starting indicates the starting state,
-   while final indicates the set of all final states.-}
-
-parseEquals :: String -> Parser ()
-parseEquals s = reserved s *> reservedOp "="
-
-parseStarting :: Parser StState
-parseStarting = Start <$> (parseEquals "starting" *> (St <$> identifier))
+parseStState :: Parser StState
+parseStState = Start <$> (parseAssign "initial" *> parseStateCore)
 
 parseFinal :: Parser FStateSet
-parseFinal = Final <$> (parseEquals "final" *>
-                           commaSep1 (St <$> identifier))
+parseFinal = Final <$> (parseAssign "final" *> parens (commaSep1 parseStateCore) <* reserved ";")
 
-parseStartStatesTag :: Parser ImportantStates
-parseStartStatesTag = Imp <$> (reservedOp "<" *> reserved "states" *> parseStarting)
-                          <*> (parseFinal <* reservedOp ">")
+parseRemStates :: Parser [StateCore]
+parseRemStates = parseAssign "all" *> parens (commaSep1 parseStateCore)
+
+parseImportantStates :: Parser ImportantStates
+parseImportantStates = Imp <$> (parseStState <* reserved ";") <*> parseFinal
 
 parseAllStates :: Parser AllStates
-parseAllStates = All <$> parseStartStatesTag
-                     <*> braces (commaSep1 $ St <$> identifier) <* parseEndTag "states"
+parseAllStates = All <$> (parseAssign "states" *> reservedOp "{" *> parseImportantStates) <*> (parseRemStates <* reservedOp "}")
 
-{- Parsing the FA tag is a matter of correctly parsing its starting tag
-   which has two parameters type and name, and then just combining the
-   parsers above to get the desired outcome.-}
 
-parseFAtype :: Parser FAtype
-parseFAtype = FaT <$> (parseEquals "type" *> identifier)
+parseTransition :: Parser Transition
+parseTransition = Tr <$> (parseStateCore <* reservedOp "#") <*> (anyChar <* (whiteSpace <* reservedOp "=")) <*> parseStateCore
 
-parseFAname :: Parser Name
-parseFAname = Nm <$> (parseEquals "name" *> identifier)
+parseDeltaCore :: Parser DeltaCore
+parseDeltaCore = Dt <$> (parseAssign "delta" *> reserved "{" *> semiSep1 parseTransition) <* reserved "}"
 
-parseStFAtag :: Parser FAid
-parseStFAtag = ID <$> (reservedOp "<" *> reserved "FA" *> parseFAtype)
-                  <*> (parseFAname <* reservedOp ">")
+parseFAtype :: Parser FAType
+parseFAtype = handleType <$> identifier
+     where
+       handleType "dfa" = DFA
+       handleType "nfa" = NFA
+
+parseFAid :: Parser FAid
+parseFAid = ID <$> parseFAtype <*> identifier
 
 parseFA :: Parser FA
-parseFA = FA <$> parseStFAtag <*> parseAlphabet
-            <*> parseAllStates <*> parseDelta <* parseEndTag "FA"
+parseFA = FA <$> (parseFAid <* (reservedOp "=" <* reservedOp "{"))
+             <*> (parseAlphabet)
+             <*> parseAllStates
+             <*> parseDeltaCore
 
-
-{-< Parsing the Statements tag >-}
-
-parseRexpExprAtom :: Parser RexpExpr
-parseRexpExprAtom =  Autom .Nm <$> identifier
-                 <|> Var <$> identifier <|> parens parseRexpExpr
-                 -- <|> parseRexpExpr
-
-
-
-parseRexpExpr :: Parser RexpExpr
-parseRexpExpr = buildExpressionParser table parseRexpExprAtom
-   where
-     table = [
-            [Prefix (Uni Neg  <$ reservedOp "!")]
-          --,  Prefix (Uni Conv <$ reserved "convert")]
-          , [Infix (Bin Plus <$ reservedOp "+") AssocRight]
-          , [Infix (Bin Times <$ reservedOp "*") AssocRight]]
-
-
-parseType :: Parser Type
-parseType = TyDFA <$ reserved "DFA" <|> TyNFA <$ reserved "NFA"
-
-{- Parsing Statements -}
--- parseStmt :: Parser Stmt
--- parseStmt = P.try (Assign <$> parseType <*> (identifier <* reservedOp "=")
---                     <*> parseRexpExpr)
---          <|>  Decl <$> parseType <*> identifier
---
---
--- parseStmtTag :: Parser Statements
--- parseStmtTag = Stmts <$> (parseStartTag "statements"
---                      *> semiSep1 parseStmt <* parseEndTag "statements")
-
-
-
-{- Add Prog Parser -}
 parseProgTag :: Parser Program
-parseProgTag = P <$> (parseStartTag "rexp" *> commaSep1 parseFA
-                 <* parseEndTag "rexp")
+parseProgTag = parseFA

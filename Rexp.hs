@@ -5,7 +5,7 @@
 --------------------------------------------------------------------}
 
 module Rexp (runString, DeltaN, Delta, Final(..)
-   , DFA(..), NFA(..), compDFA, uu, (@@), dfa1, dfa2, runStringN, State(..)
+   , DFA(..), NFA(..), compDFA, uu, (^@) , dfa1, dfa2, runStringN, State(..)
    ) where
 
 import qualified Data.Map as M
@@ -237,8 +237,8 @@ makeDeltaIntersect t = M.mapKeys (\(l, c) ->
                             (makeStateIntersect l, c))
                                (M.map (\l -> makeStateIntersect l) t)
 
-(@@) :: DFA -> DFA -> DFA
-(@@) (D q qs al d fs) (D q1 qs1 al1 d1 fs1) =
+(^@) :: DFA -> DFA -> DFA
+(^@) (D q qs al d fs) (D q1 qs1 al1 d1 fs1) =
   let delta = (makeDeltaIntersect (andhelper (length qs + length qs1) al (d, q) (d1, q1) M.empty)) in
                 D (fromJust (initialState (extractStates delta))) (extractStates delta)
                 al delta (finals (extractStates delta))
@@ -328,10 +328,10 @@ unionDfa2 = uu compdfa1 compdfa2
 
 -- 3. Intersection
 intersectDfa1 :: DFA
-intersectDfa1 = (@@) dfa1 dfa2
+intersectDfa1 = (^@) dfa1 dfa2
 
 intersectDfa2 :: DFA
-intersectDfa2 = (@@) compdfa1 compdfa2
+intersectDfa2 = (^@) compdfa1 compdfa2
 
 intersectDfa3 :: DFA
-intersectDfa3 = (@@) unionDfa1 unionDfa2
+intersectDfa3 = (^@) unionDfa1 unionDfa2
