@@ -105,7 +105,7 @@ example = unlines ["dfa fstDFA = {"
           , "q0 # a = q1;"
           , "q1 # b = q2;"
           , "q2 # a = q3;"
-          , "q3 # b = q0}}"]
+          , "q3 # b = q3}}"]
 
 evaluate :: String -> [(String, DFA)]
 evaluate s =  case  parseSome parseProgTag s of

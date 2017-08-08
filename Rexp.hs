@@ -5,7 +5,7 @@
 --------------------------------------------------------------------}
 
 module Rexp (runString, DeltaN, Delta, Final(..)
-   , DFA(..), NFA(..), compDFA, uu, (^@) , dfa1, dfa2, runStringN, State(..)
+   , DFA(..), NFA(..), compDFA, uu, (^@), dfa1, dfa2, runStringN, State(..)
    ) where
 
 import qualified Data.Map as M
